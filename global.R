@@ -3,7 +3,7 @@ library(shinydashboard)
 library(tidyverse)
 library(lubridate)
 library(stringr)
-library(d3heatmap)
+library(RColorBrewer)
 
 prison <- read.csv('prison-admissions-beginning-2008.csv')
 
@@ -38,21 +38,76 @@ prison <- prison %>%
   filter(Gender != "Not Coded" &
            County != "Missing" & 
            County != "") %>% 
-  select(-Last.Residence)
+  select(-Last.Residence) 
 
-View(prison)
 
-  
-# unique(prison$Most.Serious.Crime)
-# colnames(prison)
 
-prisonheatmap <- 
+prison$Crime.Category <- case_when(
+  grepl("MURDER", prison$Most.Serious.Crime) == "TRUE" ~ "Murder",
+  grepl("MURDER", prison$Most.Serious.Crime) == "TRUE" ~ "Murder",
+  grepl("FORGE", prison$Most.Serious.Crime) == "TRUE" ~ "Forgery",
+  grepl("ASSAULT", prison$Most.Serious.Crime) == "TRUE" ~ "Assault",
+  grepl("ARSON", prison$Most.Serious.Crime) == "TRUE" ~ "Arson",
+  grepl("CONTEMPT", prison$Most.Serious.Crime) == "TRUE" ~ "Contempt",
+  grepl("CONSPIRACY", prison$Most.Serious.Crime) == "TRUE" ~ "Conspiracy",
+  grepl("TAX", prison$Most.Serious.Crime) == "TRUE" ~ "Tax Related",
+  grepl("STRANGUL", prison$Most.Serious.Crime) == "TRUE" ~ "Strangulation",
+  grepl("BAIL", prison$Most.Serious.Crime) == "TRUE" ~ "Bail Related",
+  grepl("MISCHIEF", prison$Most.Serious.Crime) == "TRUE" ~ "Criminal Mischief",
+  grepl("KIDNAPPING", prison$Most.Serious.Crime) == "TRUE" ~ "Kidnapping",  
+  grepl("COERC", prison$Most.Serious.Crime) == "TRUE" ~ "Coercion",  
+  grepl("RECK ENDANG", prison$Most.Serious.Crime) == "TRUE" ~ "Reckless Endangerment",  
+  grepl("UNLICENSED D", prison$Most.Serious.Crime) == "TRUE" ~ "Unlicensed Driver",
+  grepl("CONTRAB", prison$Most.Serious.Crime) == "TRUE" ~ "Contraband Possession",
+  # Manslaughter
+  (grepl("MANSLAUG", prison$Most.Serious.Crime) | 
+     grepl("MANSL", prison$Most.Serious.Crime)) == "TRUE" ~ "Manslaughter", 
+  # Weapons
+  (grepl("WEAP", prison$Most.Serious.Crime) |
+     grepl("FIREARM", prison$Most.Serious.Crime)) == "TRUE" ~ "Weapon Related",
+  # Fraud, identity theft 
+  (grepl("IDENTITY THEFT", prison$Most.Serious.Crime) |
+     grepl("FRAUD", prison$Most.Serious.Crime)) == "TRUE" ~ "Fraud",
+  # Drug Related  
+  (grepl("CPCS", prison$Most.Serious.Crime) |
+     grepl("DRUG", prison$Most.Serious.Crime) |
+     grepl("MARI", prison$Most.Serious.Crime) |
+     grepl("DRGS", prison$Most.Serious.Crime) |
+     grepl("CONTROLLED", prison$Most.Serious.Crime) |
+     grepl("METH", prison$Most.Serious.Crime) |
+     grepl("CSCS", prison$Most.Serious.Crime)) == "TRUE" ~ "Drug Related",
+  # DUI
+  (grepl("IMPAIR", prison$Most.Serious.Crime) |
+     grepl("INTOX", prison$Most.Serious.Crime) |
+     grepl("DWI", prison$Most.Serious.Crime)) == "TRUE" ~ "DUI",
+  # Sexual Crimes
+  (grepl("RAPE", prison$Most.Serious.Crime) |
+     grepl("CRIM SEX ACT", prison$Most.Serious.Crime) |
+     grepl("SEX", prison$Most.Serious.Crime) |
+     grepl("PORN", prison$Most.Serious.Crime) |
+     grepl("PROSTI", prison$Most.Serious.Crime) |
+     grepl("INDEC", prison$Most.Serious.Crime) |
+     grepl("SODOMY", prison$Most.Serious.Crime)) == "TRUE" ~ "Sexual Crime" ,
+  # Theft
+  (grepl("BURGLARY", prison$Most.Serious.Crime) | 
+     grepl("LARCEN", prison$Most.Serious.Crime) |
+     grepl("LAR", prison$Most.Serious.Crime) |
+     grepl("STOLEN", prison$Most.Serious.Crime) |
+     grepl("ROBBERY", prison$Most.Serious.Crime)) == "TRUE" ~ "Theft",
+  # Youthful 
+  (grepl("YO", prison$Most.Serious.Crime) | 
+     grepl("YOUTHFUL", prison$Most.Serious.Crime)) == "TRUE" ~ "Youthful Offender",
+  TRUE ~ as.character(prison$Most.Serious.Crime)
+)
+
+crimes <- 
   prison %>% 
-  filter(Year == 2018) %>% 
-  group_by(Month) %>% 
-  summarise(Total = n())
+  group_by(Crime.Category) %>%
+  summarise(Count = n()) %>%
+  arrange(desc(Count)) %>%
+  top_n(20)
 
-d3heatmap(prisonheatmap, dendrogram = "none")
+
 
 
 # View(prison)
