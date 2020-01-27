@@ -1,0 +1,454 @@
+---
+title: "prison"
+author: "Richard Choi"
+date: "1/26/2020"
+output: html_document
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(shiny)
+library(shinydashboard)
+library(tidyverse)
+library(lubridate)
+library(stringr)
+library(RColorBrewer)
+
+prison <- read.csv('prison-admissions-beginning-2008.csv')
+
+
+# rename columns
+colnames(prison) = c("Year",
+                     "Admission.Month",
+                     "Month",
+                     "Admission.Type",
+                     "County",
+                     "Last.Residence",
+                     "Gender",
+                     "Age.Admitted",
+                     "Most.Serious.Crime")
+
+# title format 
+prison$Gender = str_to_title(prison$Gender)
+prison$Admission.Month = str_to_title(prison$Admission.Month)
+prison$Admission.Type = str_to_title(prison$Admission.Type)
+prison$County = str_to_title(prison$County)
+prison$Last.Residence = str_to_title(prison$Last.Residence)
+prison$Gender = str_to_title(prison$Gender)
+
+# categorize age column
+prison$Age.Group <- cut(prison$Age.Admitted, 
+                        breaks = c(0,18,31,45,66,200), 
+                        labels = c("Juvenile","Young Adult","Adult", "Middle Age","Elderly"), 
+                        right = F)
+
+
+# Clean Data 
+prison <- prison %>%
+  filter(Gender != "Not Coded" &
+           County != "Missing" & 
+           County != "") %>% 
+  select(-Last.Residence) 
+
+
+# Categorizing Top Crimes
+prison$Crime.Category <- case_when(
+  grepl("MURDER", prison$Most.Serious.Crime) == "TRUE" ~ "Murder",
+  grepl("MURDER", prison$Most.Serious.Crime) == "TRUE" ~ "Murder",
+  grepl("FORGE", prison$Most.Serious.Crime) == "TRUE" ~ "Forgery",
+  grepl("ASSAULT", prison$Most.Serious.Crime) == "TRUE" ~ "Assault",
+  grepl("ARSON", prison$Most.Serious.Crime) == "TRUE" ~ "Arson",
+  grepl("CONTEMPT", prison$Most.Serious.Crime) == "TRUE" ~ "Contempt",
+  grepl("CONSPIRACY", prison$Most.Serious.Crime) == "TRUE" ~ "Conspiracy",
+  grepl("TAX", prison$Most.Serious.Crime) == "TRUE" ~ "Tax Related",
+  grepl("STRANGUL", prison$Most.Serious.Crime) == "TRUE" ~ "Strangulation",
+  grepl("BAIL", prison$Most.Serious.Crime) == "TRUE" ~ "Bail Related",
+  grepl("MISCHIEF", prison$Most.Serious.Crime) == "TRUE" ~ "Criminal Mischief",
+  grepl("KIDNAPPING", prison$Most.Serious.Crime) == "TRUE" ~ "Kidnapping",  
+  grepl("COERC", prison$Most.Serious.Crime) == "TRUE" ~ "Coercion",  
+  grepl("RECK ENDANG", prison$Most.Serious.Crime) == "TRUE" ~ "Reckless Endangerment",  
+  grepl("UNLICENSED D", prison$Most.Serious.Crime) == "TRUE" ~ "Unlicensed Driver",
+  grepl("CONTRAB", prison$Most.Serious.Crime) == "TRUE" ~ "Contraband Possession",
+  # Manslaughter
+  (grepl("MANSLAUG", prison$Most.Serious.Crime) | 
+     grepl("MANSL", prison$Most.Serious.Crime)) == "TRUE" ~ "Manslaughter", 
+  # Weapons
+  (grepl("WEAP", prison$Most.Serious.Crime) |
+     grepl("FIREARM", prison$Most.Serious.Crime)) == "TRUE" ~ "Weapon Related",
+  # Fraud, identity theft 
+  (grepl("IDENTITY THEFT", prison$Most.Serious.Crime) |
+     grepl("FRAUD", prison$Most.Serious.Crime)) == "TRUE" ~ "Fraud",
+  # Drug Related  
+  (grepl("CPCS", prison$Most.Serious.Crime) |
+     grepl("DRUG", prison$Most.Serious.Crime) |
+     grepl("MARI", prison$Most.Serious.Crime) |
+     grepl("DRGS", prison$Most.Serious.Crime) |
+     grepl("CONTROLLED", prison$Most.Serious.Crime) |
+     grepl("METH", prison$Most.Serious.Crime) |
+     grepl("CSCS", prison$Most.Serious.Crime)) == "TRUE" ~ "Drug Related",
+  # DUI
+  (grepl("IMPAIR", prison$Most.Serious.Crime) |
+     grepl("INTOX", prison$Most.Serious.Crime) |
+     grepl("DWI", prison$Most.Serious.Crime)) == "TRUE" ~ "DUI",
+  # Sexual Crimes
+  (grepl("RAPE", prison$Most.Serious.Crime) |
+     grepl("CRIM SEX ACT", prison$Most.Serious.Crime) |
+     grepl("SEX", prison$Most.Serious.Crime) |
+     grepl("PORN", prison$Most.Serious.Crime) |
+     grepl("PROSTI", prison$Most.Serious.Crime) |
+     grepl("INDEC", prison$Most.Serious.Crime) |
+     grepl("SODOMY", prison$Most.Serious.Crime)) == "TRUE" ~ "Sexual Crime" ,
+  # Theft
+  (grepl("BURGLARY", prison$Most.Serious.Crime) | 
+     grepl("LARCEN", prison$Most.Serious.Crime) |
+     grepl("LAR", prison$Most.Serious.Crime) |
+     grepl("STOLEN", prison$Most.Serious.Crime) |
+     grepl("ROBBERY", prison$Most.Serious.Crime)) == "TRUE" ~ "Theft",
+  # Youthful 
+  (grepl("YO", prison$Most.Serious.Crime) | 
+     grepl("YOUTHFUL", prison$Most.Serious.Crime)) == "TRUE" ~ "Youthful Offender",
+  TRUE ~ as.character(prison$Most.Serious.Crime)
+)
+
+
+
+
+
+
+```
+
+This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately. 
+
+To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
+
+## Inputs and Outputs
+
+You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
+
+```{r eruptions, echo=FALSE}
+shinyUI(dashboardPage(
+    dashboardHeader(title = "NY Prison Admissions", titleWidth = 250),
+    
+# Sidebar tabs    
+    dashboardSidebar(
+        sidebarMenu(
+            menuItem('Introduction', 
+                     tabName = 'intro', 
+                     icon = icon('info-circle')),
+            menuItem('Demographic Analysis',
+                     tabName = 'demographics', 
+                     icon = icon('users')),
+            menuItem('Trend Analysis',
+                     tabName = 'trends', 
+                     icon = icon('chart-line')),
+            menuItem('Top Crimes',
+                     tabName = 'crime', 
+                     icon = icon('gavel')),
+            menuItem('County Analysis',
+                     tabName = 'county', 
+                     icon = icon('map')),
+            menuItem('Data',
+                     tabName = 'data', 
+                     icon = icon('table')),
+            width = 250)),
+     
+# Dashboard Body
+    dashboardBody(
+        tabItems(
+            
+            # Introduction UI
+            tabItem(tabName = 'intro',
+                    fluidRow(
+                        box(width = 10,
+                            h2("Introduction"),
+                            br(), 
+                            br(),
+                            p("This exploratory data analysis examines prisons admissions data in New York State starting from 2008 and ending in 2018. This was provided by the state of New York via Kaggle."), 
+                            br(),
+                            p("Some insights that we hope to glean pertain to a multitude of factors such as age group (i.e. which age group commits more crimes today than in the past?) and gender (i.e. which are the most common crimes for men and women? Please leverage this Shiny app to visualize data and draw your conclusions.")))),
+            
+            
+            # Demographics UI
+             tabItem(tabName = 'demographics',
+                     fluidRow(
+                         box(width = 7, 
+                             plotOutput("demogbar", height = 400), 
+                             title = "Incarceration by Gender and Age", 
+                             status = "primary", 
+                            selectizeInput("demogyear",
+                                           "Choose Year:",
+                                           choices = c(2008:2018), 
+                                           selected = 2008, 
+                                           width = 250))),
+                     fluidRow(
+                         box(width = 5, 
+                             plotOutput("demogstack", height = 478), 
+                             title = "Proportion by Gender", 
+                             status = "primary"),
+                         box(width = 5, 
+                             plotOutput("demoagestack", 
+                                        height = 478),
+                             title = "Proportion by Age",
+                             status = "primary"))),
+            
+            
+            # Trends UI
+            tabItem(tabName = 'trends',
+                    fluidRow(
+                        box(width = 8, 
+                            plotOutput("monthtrend", 
+                                       height = 600), 
+                            title = "Monthly Trend", 
+                            status = "primary",
+                            selectizeInput("bymonthyear",
+                                           "Choose Year:",
+                                           choices = c(2008:2018), 
+                                           selected = 2008, 
+                                           width = 250))), 
+                    fluidRow(
+                        box(width = 8, 
+                            plotOutput("myheatmap", 
+                                       height = 600), 
+                            title = "Heatmap", 
+                            status = "primary"))),
+            
+            
+            # Crime UI
+            tabItem(tabName = 'crime',
+                    fluidRow(
+                        box(width = 6, 
+                            plotOutput("crimebar", 
+                                       height = 600), 
+                            title = "Top 20 Crimes by Year",
+                            selectizeInput("crimeyear",
+                                           "Year",
+                                           choices = c(2008:2018), 
+                                           selected = 2018,
+                                           width = 300), 
+                            status = "primary"),
+                        column(width = 6, 
+                               box(width = 11, 
+                                   height = 600, 
+                                   status = "primary",
+                                   plotOutput('agcrimeplot'),
+                                   selectizeInput("crimeagegroup",
+                                                  "Age Group", 
+                                                  choices = unique(prison$Age.Group), 
+                                                  selected = NULL, 
+                                                  width = 200),
+                                   selectizeInput("crimeageyear","Year",
+                                                  choices = c(2008:2018), 
+                                                  selected = 2018, 
+                                                  width = 300)), 
+                               box(width = 11, 
+                                   height = 600, 
+                                   status = "primary",
+                                   plotOutput('gendercrimeplot'),
+                                   selectizeInput("crimegender",
+                                                  "Gender", 
+                                                  choices = unique(prison$Gender), 
+                                                  selected = NULL, 
+                                                  width = 300),
+                                   selectizeInput("crimegenderyear",
+                                                  "Year",
+                                                  choices = c(2008:2018), 
+                                                  selected = 2018, 
+                                                  width = 300))))),
+            
+            
+            # County Tabs UI
+            tabItem(tabName = 'county',
+                    fluidRow(
+                        box(width = 6, 
+                            height = 500, 
+                            status = "primary",
+                            plotOutput('countyrankdecade')), 
+                        box(width = 6, 
+                            height = 500, 
+                            status = "primary",
+                            plotOutput('countyrankyearly'),
+                            selectizeInput("rankyyrcty", 
+                                           "Year", 
+                                           choices = c(2008:2018), 
+                                           selected = 2018))),
+                    fluidRow(box(width = 9, 
+                                 height = 450, 
+                                 plotOutput('trendbycounty')),
+                             box(width = 3, 
+                                 height = 100,
+                                 selectizeInput("yrcounty","County", 
+                                                choices = unique(prison$County), 
+                                                selected = NULL)))),
+            
+            # Datatable UI
+            tabItem(tabName = 'data',
+                    DT::dataTableOutput("dt1"))),
+        ),
+    skin = "purple"))
+
+
+
+shinyServer(function(input, output) {
+    
+# DEMOGRAPHICS TAB
+    
+  # Incarceration by Gender and Age Bar Plot
+  output$demogbar <- renderPlot(
+    prison %>% 
+      filter(Year == as.numeric(input$demogyear)) %>% 
+      ggplot(aes(x = Age.Group, fill = Gender)) +
+      geom_bar(position = "dodge"))
+    
+  # Filed Barplot (Age Group)
+  output$demogstack <- renderPlot(
+    prison %>% 
+      ggplot(aes(x = Year)) +
+      geom_bar(aes(fill = Gender), position = "fill"))
+  
+
+  # Filled Barplot (Gender)
+  output$demoagestack <- renderPlot(
+    prison %>% 
+      ggplot(aes(x = Year)) +
+      geom_bar(aes(fill = Age.Group), position = "fill"))
+    
+            
+# TREND ANALYSIS TAB
+    
+  # Line Chart (Monthly Trend)
+  output$monthtrend <- renderPlot(
+    prison %>%
+      filter(Year == as.numeric(input$bymonthyear)) %>%
+      group_by(Month) %>%
+      summarise(Admissions = n()) %>%
+      ggplot(aes(x = Month, y = Admissions)) + 
+      geom_line()) 
+    
+  # Heatmap (Month vs Year) 
+  output$myheatmap <- renderPlot(
+    prison %>% 
+      group_by(Year, Month) %>% 
+      summarise(Admissions = n()) %>% 
+      ggplot() +
+      geom_tile(aes(x = Year, y = Month, fill = Admissions)) +
+      scale_fill_gradient(low="white", high="darkblue")) 
+      
+    
+    
+    
+# TOP CRIMES TAB
+    
+  # TOP CRIMES OF DECADE BAR
+  output$crimebar <- renderPlot(
+    prison %>%  
+      filter(Year == input$crimeyear) %>% 
+      group_by(Crime.Category) %>% 
+      summarise(Count = n()) %>% 
+      arrange(desc(Count)) %>% 
+      top_n(20) %>%  
+      ggplot(aes(reorder(Crime.Category,Count), y = Count)) +
+      geom_col() +
+      labs(title='Top 20 Crimes', x='Offense', y='Occurences') +
+      scale_fill_brewer(palette = 'Set1') +
+      theme_bw() +
+      theme(legend.key=element_blank(), legend.position="bottom") +
+      coord_flip())
+  
+  
+  # TOP CRIMES BY AGE GROUP  
+  output$agcrimeplot <- renderPlot(
+    prison %>%  
+      filter(Age.Group == input$crimeagegroup  & Year ==input$crimeageyear) %>%
+      group_by(Crime.Category) %>% 
+      summarise(Count = n()) %>% 
+      arrange(desc(Count)) %>% 
+      top_n(5) %>%  
+      ggplot(aes(reorder(Crime.Category, Count), y = Count)) +
+      geom_col() +
+      scale_fill_brewer(palette = 'Set1') +
+      theme_bw() + 
+      xlab ("Crime") + ylab("Total") + 
+      ggtitle("Crimes by Age Group"))
+    
+  # TOP CRIMES BY GENDER 
+  output$gendercrimeplot <- renderPlot(
+    prison %>%  
+      filter(Gender == input$crimegender  & Year ==input$crimegenderyear) %>%
+      group_by(Crime.Category) %>% 
+      summarise(Count = n()) %>% 
+      arrange(desc(Count)) %>% 
+      top_n(5) %>%  
+      ggplot(aes(reorder(Crime.Category, Count), y = Count)) +
+      geom_col() +
+      scale_fill_brewer(palette = 'Set1') +
+      theme_bw() + 
+      xlab ("Crime") + ylab("Total") +         
+      ggtitle("Crimes by Gender"))
+    
+
+
+    
+                 
+# County 
+
+  # TOP COUNTIES BY CRIME
+  output$countyrankdecade <- renderPlot(
+    prison %>%  
+      group_by(County) %>% 
+      summarise(Count = n()) %>% 
+      arrange(desc(Count)) %>% 
+      top_n(20) %>%  
+      ggplot(aes(reorder(County,Count), y = Count)) +
+      geom_col() +        
+      labs(title='Top 20 Counties from 2008 to 2018', x='County', y='Occurences') +
+      scale_fill_brewer(palette = 'Set1') +
+      theme_bw() +
+      theme(legend.key=element_blank(), legend.position="bottom") +
+      coord_flip()  
+    )
+  
+  # TOP COUNTIES BY YEAR  
+  output$countyrankyearly <- renderPlot(
+     prison %>%  
+      filter(Year == input$rankyyrcty) %>%    
+      group_by(County) %>% 
+      summarise(Count = n()) %>% 
+      arrange(desc(Count)) %>% 
+      top_n(20) %>%  
+      ggplot(aes(reorder(County,Count), y = Count)) +
+      geom_col() +
+      labs(title='Top 20 Counties by Year', x='County', y='Occurences') +
+      scale_fill_brewer(palette = 'Set1') +
+      theme_bw() +
+      theme(legend.key=element_blank(), legend.position="bottom") +
+      coord_flip())
+    
+    
+    
+  # Yearly Trend by County Line  
+  output$trendbycounty <- renderPlot(
+    prison %>%  
+      filter(County == input$yrcounty) %>% 
+      group_by(Year) %>% 
+      summarise(Count = n()) %>% 
+      ggplot(aes(x = Year, y = Count)) +
+      geom_line() + 
+      scale_fill_brewer(palette = 'Set1') + 
+      theme_bw() +
+      ylab('Total)') + 
+      ggtitle("Yearly Trend by County"))
+    
+
+      
+
+    
+# Data Tab
+  output$dt1 <- DT::renderDataTable({
+    prison
+      }) 
+})
+
+```
+

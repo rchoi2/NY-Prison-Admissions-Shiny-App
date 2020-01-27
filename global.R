@@ -7,8 +7,6 @@ library(RColorBrewer)
 
 prison <- read.csv('prison-admissions-beginning-2008.csv')
 
-# to do list
-# filter out not coded from gender 
 
 # rename columns
 colnames(prison) = c("Year",
@@ -30,7 +28,10 @@ prison$Last.Residence = str_to_title(prison$Last.Residence)
 prison$Gender = str_to_title(prison$Gender)
 
 # categorize age column
-prison$Age.Group <- cut(prison$Age.Admitted, breaks = c(0,18,31,45,66,200), labels = c("Juvenile","Young Adult","Adult", "Middle Age","Elderly"), right = F)
+prison$Age.Group <- cut(prison$Age.Admitted, 
+                        breaks = c(0,18,31,45,66,200), 
+                        labels = c("Juvenile","Young Adult","Adult", "Middle Age","Elderly"), 
+                        right = F)
 
 
 # Clean Data 
@@ -41,7 +42,7 @@ prison <- prison %>%
   select(-Last.Residence) 
 
 
-
+# Categorizing Top Crimes
 prison$Crime.Category <- case_when(
   grepl("MURDER", prison$Most.Serious.Crime) == "TRUE" ~ "Murder",
   grepl("MURDER", prison$Most.Serious.Crime) == "TRUE" ~ "Murder",
@@ -100,18 +101,8 @@ prison$Crime.Category <- case_when(
   TRUE ~ as.character(prison$Most.Serious.Crime)
 )
 
-crimes <- 
-  prison %>% 
-  group_by(Crime.Category) %>%
-  summarise(Count = n()) %>%
-  arrange(desc(Count)) %>%
-  top_n(20)
 
 
 
-
-# View(prison)
-
-# leaflet https://stackoverflow.com/questions/43446802/how-to-download-ny-state-all-county-data-in-r-for-leaflet-map
 
 
