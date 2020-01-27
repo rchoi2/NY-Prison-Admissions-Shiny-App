@@ -37,7 +37,7 @@ shinyUI(dashboardPage(
                             br(),
                             p("This exploratory data analysis examines prisons admissions data in New York State starting from 2008 and ending in 2018. This was provided by the state of New York via Kaggle."), 
                             br(),
-                            p("Some insights that we hope to glean pertain to a multitude of factors such as age group (i.e. which age group commits more crimes today than in the past?) and gender (i.e. which are the most common crimes for men and women? Please leverage this Shiny app to visualize data and draw your conclusions.")))),
+                            p("Some insights that we hope to glean pertain to a multitude of factors such as age group (i.e. which age group commits more crimes today than in the past?) and gender (i.e. which are the most common crimes for men and women?). Please leverage this Shiny app to visualize data and draw your conclusions.")))),
             
             
             # Demographics UI
