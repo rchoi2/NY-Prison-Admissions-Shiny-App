@@ -10,3 +10,8 @@ Are they largely male?
 Are they of the young adult variety?
 Are the people in our prisons monsters who committed the most horrific violent crimes?
 Please join me in this exploratory data analysis (EDA) to find out the answer to these questions and more about prison admittees in my home state of New York from 2008 to 2018.
+
+[Shiny App](https://richardcchoi.shinyapps.io/prison/)
+
+
+
